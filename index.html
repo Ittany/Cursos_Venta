@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EDUCANDING | Cursos</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+
+  <header class="site-header">
+    <nav class="nav container">
+      <a class="brand" href="#">EDUCANDING</a>
+
+      <button class="nav-toggle" id="navToggle" type="button"
+              aria-label="Abrir menú" aria-expanded="false" aria-controls="navMenu">
+        <span></span><span></span><span></span>
+      </button>
+
+      <div class="nav-menu" id="navMenu">
+        <a href="#cursos">Cursos</a>
+        <a class="gmail-link" href="#" data-course="Información general">Consultar por Gmail</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <canvas id="heroCanvas" aria-hidden="true"></canvas>
+
+      <div class="container hero-content">
+        <h1>Aprende hoy. <span>Construye tu futuro.</span></h1>
+        <p>Descubre cursos pensados para desarrollar habilidades digitales.</p>
+
+        <a class="btn gmail-link" href="#" data-course="Consulta de cursos">
+          Quiero información
+        </a>
+      </div>
+    </section>
+
+    <section class="section" id="cursos">
+      <div class="container">
+        <h2>Cursos</h2>
+        <p></p>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <span id="toastText">Abriendo Gmail…</span>
+  </div>
+
+  <div class="click-counter" aria-live="polite">
+    <span>✉</span>
+    <span><strong id="clickCount">0</strong> consultas iniciadas</span>
+  </div>
+
+</body>
+</html>
