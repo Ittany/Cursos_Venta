@@ -42,18 +42,23 @@
     <section class="section" id="cursos">
       <div class="container">
         <h2>Cursos</h2>
-        <p></p>
+        <p>Próximamente añadiremos las tarjetas de cada curso.</p>
       </div>
     </section>
   </main>
 
-  <div class="toast" id="toast" role="status" aria-live="polite">
-    <span id="toastText">Abriendo Gmail…</span>
-  </div>
-
+  <!-- Controles flotantes: contador + botón reinicio -->
   <div class="click-counter" aria-live="polite">
     <span>✉</span>
     <span><strong id="clickCount">0</strong> consultas iniciadas</span>
+  </div>
+
+  <button class="reset-btn" id="resetBtn" type="button" aria-label="Reiniciar contador y fondo">
+    ↺ Reiniciar
+  </button>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <span id="toastText">Abriendo Gmail…</span>
   </div>
 
 </body>
