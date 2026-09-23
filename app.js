@@ -1,283 +1,411 @@
 (() => {
   "use strict";
 
-  // ---- Constantes del módulo ----
+  /* =========================================================
+     Constantes
+     ========================================================= */
   const EMAIL = "gonzalesbrittany802@gmail.com";
   const GMAIL_URL = "https://mail.google.com/mail/?view=cm&fs=1&to=";
 
-  // ---- Referencias al DOM (capturadas una sola vez) ----
+  /* ---------------------------------------------------------
+     Registry de listeners (evita huérfanos)
+     --------------------------------------------------------- */
+  const listenerRegistry = [];
+  const on = (target, type, handler, options) => {
+    target.addEventListener(type, handler, options);
+    listenerRegistry.push({ target, type, handler, options });
+  };
+
+  /* ---------------------------------------------------------
+     Referencias DOM
+     --------------------------------------------------------- */
+  const $ = (sel) => document.querySelector(sel);
   const dom = {
-    canvas: document.querySelector("#heroCanvas"),
-    navToggle: document.querySelector("#navToggle"),
-    navMenu: document.querySelector("#navMenu"),
-    toast: document.querySelector("#toast"),
-    toastText: document.querySelector("#toastText"),
-    clickCount: document.querySelector("#clickCount"),
-    resetBtn: document.querySelector("#resetBtn")
+    canvas: $("#heroCanvas"),
+    navToggle: $("#navToggle"),
+    navMenu: $("#navMenu"),
+    toast: $("#toast"),
+    toastText: $("#toastText"),
+    clickCount: $("#clickCount"),
+    resetBtn: $("#resetBtn"),
+    compactToggle: $("#compactToggle"),
+    courseGrid: $("#courseGrid"),
+    contactForm: $("#contactForm"),
+    year: $("#year")
   };
 
-  /* 
-     CLOSURE #1 — Contador de consultas
-     */
-  const createClickCounter = () => {
-    let count = 0;
-
-    const render = () => {
-      dom.clickCount.textContent = String(count);
-    };
-
-    return {
-      // Arrow function: `this` es léxico, no depende del llamador.
-      increment: () => {
-        count += 1;
-        render();
-        return count;
-      },
-      reset: () => {
-        count = 0;
-        render();
-        return count;
-      },
-      get: () => count
-    };
-  };
-
-  const clickCounter = createClickCounter();
-
-  /* CLOSURE #2 — Toast reutilizable*/
+  /* ---------------------------------------------------------
+     Toast
+     --------------------------------------------------------- */
   const showToast = (() => {
     let timer = 0;
-
     return (message) => {
       dom.toastText.textContent = message;
       dom.toast.classList.add("show");
       window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
-        dom.toast.classList.remove("show");
-      }, 2600);
+      timer = window.setTimeout(() => dom.toast.classList.remove("show"), 2400);
     };
   })();
 
-  /*  CLOSURE #3 — Sistema de partículas + letra animada + burbujas */
-  const createAnimationSystem = (canvas) => {
-    const ctx = canvas.getContext("2d");
+  /* ---------------------------------------------------------
+     CONTADOR DE CONSULTAS (solo clicks de Gmail)
+     --------------------------------------------------------- */
+  const createCounter = (el) => {
+    let count = 0;
+    const render = () => { el.textContent = String(count); };
+    return {
+      inc: () => { count += 1; render(); return count; },
+      get: () => count
+    };
+  };
+  const consultas = createCounter(dom.clickCount);
 
-    // Estado encapsulado (retained por el closure entre frames).
+  /* =========================================================
+     SISTEMA DE ANIMACIÓN — BURBUJAS GIGANTES + partículas
+     ========================================================= */
+  const createAnimationSystem = (canvas) => {
+    const ctx = canvas.getContext("2d", { alpha: true });
+    if (!ctx) return null;
+
     const state = {
-      width: 0,
-      height: 0,
+      width: 0, height: 0, dpr: 1,
       particles: [],
-      extraBubbles: [],
-      letter: {
-        char: "E",
-        x: 0,
-        y: 0,
-        vx: 90,   // px/s
-        vy: 70,   // px/s
-        size: 42
-      },
+      bubbles: [],   // ← burbujas gigantes del click
       lastTime: 0,
-      animationId: 0,
-      running: false
+      rafId: 0,
+      running: false,
+      paused: false,
+      internalListeners: []
     };
 
-    const random = (min, max) => Math.random() * (max - min) + min;
+    const rand = (a, b) => Math.random() * (b - a) + a;
 
-    // ---- Redimensionar el canvas respetando el devicePixelRatio ----
+    const addInternalListener = (t, type, fn, opts) => {
+      t.addEventListener(type, fn, opts);
+      state.internalListeners.push({ t, type, fn, opts });
+    };
+
     const resize = () => {
-      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      state.dpr = Math.min(window.devicePixelRatio || 1, 2);
       state.width = canvas.clientWidth;
       state.height = canvas.clientHeight;
-      canvas.width = Math.floor(state.width * ratio);
-      canvas.height = Math.floor(state.height * ratio);
-      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      canvas.width = Math.floor(state.width * state.dpr);
+      canvas.height = Math.floor(state.height * state.dpr);
+      ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
     };
 
-    // ---- Crear las partículas base del fondo ----
     const seedParticles = () => {
       const amount = Math.max(35, Math.floor(state.width / 22));
       state.particles = Array.from({ length: amount }, () => ({
-        x: random(0, state.width),
-        y: random(0, state.height),
-        radius: random(0.6, 1.8),
-        speed: random(7, 20),
-        drift: random(-4, 4),
-        alpha: random(0.18, 0.65)
+        x: rand(0, state.width),
+        y: rand(0, state.height),
+        radius: rand(0.8, 2.2),
+        speed: rand(8, 22),
+        drift: rand(-5, 5),
+        alpha: rand(0.2, 0.7)
       }));
     };
 
-    // ---- Añadir burbujas al hacer click en un botón ----
-    const addBubbles = (amount = 6) => {
-      for (let i = 0; i < amount; i += 1) {
-        state.extraBubbles.push({
-          x: random(0, state.width),
-          y: state.height + random(0, 40),
-          radius: random(6, 18),
-          speed: random(30, 70),
-          drift: random(-15, 15),
-          alpha: random(0.25, 0.6),
-          hue: random(160, 190) // tono verdoso/teal
-        });
-      }
+    /* ---------------------------------------------------------
+       BURBUJA GIGANTE — aparece al hacer click en el canvas
+       --------------------------------------------------------- */
+    const addBubble = (x, y) => {
+      const radius = rand(120, 260);
+      state.bubbles.push({
+        x: x ?? rand(0, state.width),
+        y: y ?? state.height + radius,
+        radius,
+        speed: rand(8, 20),
+        drift: rand(-15, 15),
+        alpha: rand(0.25, 0.5),
+        decay: rand(0.015, 0.04),
+        hue: rand(190, 210)
+      });
     };
 
-    // ---- Reset: limpia burbujas extra y reposiciona la letra ----
-    const reset = () => {
-      state.extraBubbles = [];
-      state.letter.x = state.width / 2;
-      state.letter.y = state.height / 2;
-      state.letter.vx = 90;
-      state.letter.vy = 70;
+    const clearBubbles = () => {
+      state.bubbles.length = 0;
     };
 
-    // ---- Dibujo ----
+    /* ---------------------------------------------------------
+       Dibujo
+       --------------------------------------------------------- */
     const drawParticle = (p) => {
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(53, 208, 186, ${p.alpha})`;
+      ctx.fillStyle = `rgba(56, 189, 248, ${p.alpha})`;
       ctx.fill();
     };
 
     const drawBubble = (b) => {
+      const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.radius);
+      grad.addColorStop(0, `hsla(${b.hue}, 90%, 70%, ${b.alpha * 0.7})`);
+      grad.addColorStop(1, `hsla(${b.hue}, 90%, 55%, 0)`);
+
       ctx.beginPath();
       ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
-      ctx.fillStyle = `hsla(${b.hue}, 80%, 60%, ${b.alpha})`;
+      ctx.fillStyle = grad;
       ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = `hsla(${b.hue}, 95%, 75%, ${Math.min(1, b.alpha * 2)})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
     };
 
-    const drawLetter = () => {
-      const l = state.letter;
-      ctx.font = `bold ${l.size}px system-ui, sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = "rgba(53, 208, 186, 0.9)";
-      ctx.fillText(l.char, l.x, l.y);
-    };
-
-    // ---- Loop principal ----
+    /* ---------------------------------------------------------
+       Loop principal (rAF + dt clamp)
+       --------------------------------------------------------- */
     const animate = (time) => {
-      // dt limitado para evitar saltos tras cambiar de pestaña.
-      const dt = Math.min((time - state.lastTime) / 1000 || 0, 0.05);
+      const rawDt = (time - state.lastTime) / 1000 || 0;
+      const dt = Math.min(rawDt, 0.05);
       state.lastTime = time;
 
       ctx.clearRect(0, 0, state.width, state.height);
 
-      // Partículas de fondo (suben).
-      state.particles.forEach((p) => {
+      // 1) Burbujas gigantes
+      for (let i = state.bubbles.length - 1; i >= 0; i -= 1) {
+        const b = state.bubbles[i];
+        b.y -= b.speed * dt;
+        b.x += b.drift * dt;
+        b.alpha -= b.decay * dt;
+        if (b.alpha <= 0 || b.y + b.radius < 0) {
+          state.bubbles.splice(i, 1);
+          continue;
+        }
+        drawBubble(b);
+      }
+
+      // 2) Partículas pequeñas encima
+      for (const p of state.particles) {
         p.y -= p.speed * dt;
         p.x += p.drift * dt;
         if (p.y < -5) p.y = state.height + 5;
         if (p.x < -5) p.x = state.width + 5;
         if (p.x > state.width + 5) p.x = -5;
         drawParticle(p);
-      });
+      }
 
-      // Burbujas extra (suben y desaparecen al salir).
-      state.extraBubbles = state.extraBubbles.filter((b) => {
-        b.y -= b.speed * dt;
-        b.x += b.drift * dt;
-        b.alpha -= 0.15 * dt;
-        if (b.y < -20 || b.alpha <= 0) return false;
-        drawBubble(b);
-        return true;
-      });
-
-      // Letra rebotando.
-      const l = state.letter;
-      l.x += l.vx * dt;
-      l.y += l.vy * dt;
-
-      if (l.x - l.size / 2 < 0) { l.x = l.size / 2; l.vx *= -1; }
-      if (l.x + l.size / 2 > state.width) { l.x = state.width - l.size / 2; l.vx *= -1; }
-      if (l.y - l.size / 2 < 0) { l.y = l.size / 2; l.vy *= -1; }
-      if (l.y + l.size / 2 > state.height) { l.y = state.height - l.size / 2; l.vy *= -1; }
-
-      drawLetter();
-
-      // Arrow function: conserva `state` vía closure entre frames.
-      state.animationId = requestAnimationFrame(animate);
+      state.rafId = requestAnimationFrame(animate);
     };
 
     const start = () => {
-      if (state.running) return;
+      if (state.running || state.paused) return;
       state.running = true;
       state.lastTime = performance.now();
-      state.animationId = requestAnimationFrame(animate);
+      state.rafId = requestAnimationFrame(animate);
     };
 
     const stop = () => {
       if (!state.running) return;
       state.running = false;
-      cancelAnimationFrame(state.animationId);
-      state.animationId = 0;
+      cancelAnimationFrame(state.rafId);
+      state.rafId = 0;
     };
 
-    // API pública del sistema de animación.
-    return { resize, seedParticles, addBubbles, reset, start, stop };
+    /* ---------------------------------------------------------
+       Click en el canvas → burbuja gigante donde se hizo click
+       --------------------------------------------------------- */
+    addInternalListener(canvas, "click", (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      addBubble(x, y);
+    });
+
+    const dispose = () => {
+      stop();
+      state.internalListeners.forEach(({ t, type, fn, opts }) => {
+        t.removeEventListener(type, fn, opts);
+      });
+      state.internalListeners.length = 0;
+      state.particles.length = 0;
+      state.bubbles.length = 0;
+    };
+
+    return {
+      resize, seedParticles, addBubble, clearBubbles,
+      start, stop, dispose
+    };
   };
 
   const anim = createAnimationSystem(dom.canvas);
+  if (!anim) console.error("Canvas no disponible");
 
-  /*HANDLERS (arrow functions → this léxico = IIFE scope) */
-
-  // Construye el link de Gmail con asunto y cuerpo.
+  /* =========================================================
+     GMAIL LINKS (delegación) — solo suma contador, NO burbujas
+     ========================================================= */
   const createGmailLink = (course) => {
     const subject = encodeURIComponent(`Consulta sobre ${course}`);
-    const body = encodeURIComponent(
-      `Hola, quisiera información sobre "${course}".`
-    );
+    const body = encodeURIComponent(`Hola, quisiera información sobre "${course}".`);
     return `${GMAIL_URL}${encodeURIComponent(EMAIL)}&su=${subject}&body=${body}`;
   };
 
-  // Click en cualquier .gmail-link.
-  const handleGmailClick = (event) => {
+  on(document, "click", (event) => {
+    const link = event.target.closest(".gmail-link");
+    if (!link) return;
     event.preventDefault();
-    const link = event.currentTarget; // `currentTarget` es más seguro que `this`
+
     const course = link.dataset.course || "Información de cursos";
-
-    const count = clickCounter.increment();   // suma 1
-    anim.addBubbles(6);                       // añade burbujas al fondo
-
-    link.href = createGmailLink(course);
-    showToast(`Abriendo Gmail… consulta #${count}`);
-    window.open(link.href, "_blank", "noopener,noreferrer");
-  };
-
-  const handleMenuToggle = () => {
-    const isOpen = dom.navMenu.classList.toggle("open");
-    dom.navToggle.setAttribute("aria-expanded", String(isOpen));
-  };
-
-  // Reinicia contador + fondo + letra.
-  const handleReset = () => {
-    clickCounter.reset();     // vuelve a 0
-    anim.reset();             // limpia burbujas y reposiciona letra
-    showToast("Estado reiniciado");
-  };
-
-  const handleResize = () => {
-    anim.resize();
-    anim.seedParticles();
-  };
-
-  // Pausa la animación cuando la pestaña no está visible (ahorro de CPU).
-  const handleVisibility = () => {
-    if (document.hidden) anim.stop();
-    else anim.start();
-  };
-
-  /* REGISTRO DE EVENTOS*/
-  document.querySelectorAll(".gmail-link").forEach((link) => {
-    link.addEventListener("click", handleGmailClick);
+    const n = consultas.inc();
+    showToast(`Abriendo Gmail… consulta #${n}`);
+    window.open(createGmailLink(course), "_blank", "noopener,noreferrer");
   });
 
-  dom.navToggle.addEventListener("click", handleMenuToggle);
-  dom.resetBtn.addEventListener("click", handleReset);
-  window.addEventListener("resize", handleResize);
-  document.addEventListener("visibilitychange", handleVisibility);
+  /* =========================================================
+     RESET — borra SOLO las burbujas, contador intacto
+     ========================================================= */
+  on(dom.resetBtn, "click", () => {
+    anim.clearBubbles();
+    showToast("Burbujas eliminadas");
+  });
 
-  /* BOOTSTRAP */
-  anim.resize();
-  anim.seedParticles();
-  anim.start();
+  /* =========================================================
+     NAV
+     ========================================================= */
+  on(dom.navToggle, "click", () => {
+    const open = dom.navMenu.classList.toggle("open");
+    dom.navToggle.setAttribute("aria-expanded", String(open));
+  });
+
+  /* =========================================================
+     COMPACT MODE
+     ========================================================= */
+  on(dom.compactToggle, "click", () => {
+    const compact = !document.body.classList.contains("compact");
+    document.body.classList.toggle("compact", compact);
+    dom.compactToggle.setAttribute("aria-pressed", String(compact));
+    document.documentElement.style.setProperty("--gap-scale", compact ? "0.5" : "1");
+    showToast(compact ? "Modo compacto" : "Modo normal");
+  });
+
+  /* =========================================================
+     RESIZE + VISIBILITY
+     ========================================================= */
+  on(window, "resize", () => {
+    if (!anim) return;
+    anim.resize();
+    anim.seedParticles();
+  });
+
+  on(document, "visibilitychange", () => {
+    if (!anim) return;
+    if (document.hidden) anim.stop();
+    else anim.start();
+  });
+
+  /* =========================================================
+     VALIDACIÓN DE INPUTS
+     ========================================================= */
+  const validators = {
+    name: (v) => v.trim().length >= 2 || "Escribe al menos 2 caracteres.",
+    email: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()) || "Correo no válido.",
+    course: (v) => v !== "" || "Selecciona un curso.",
+    message: (v) => v.trim().length >= 10 || "Mínimo 10 caracteres."
+  };
+
+  const validateField = (input) => {
+    const rule = validators[input.name];
+    if (!rule) return true;
+    const result = rule(input.value);
+    const errorEl = document.querySelector(`[data-error-for="${input.id}"]`);
+    if (result === true) {
+      input.classList.remove("invalid");
+      input.classList.add("valid");
+      input.setAttribute("aria-invalid", "false");
+      if (errorEl) errorEl.textContent = "";
+      return true;
+    }
+    input.classList.add("invalid");
+    input.classList.remove("valid");
+    input.setAttribute("aria-invalid", "true");
+    if (errorEl) errorEl.textContent = result;
+    return false;
+  };
+
+  on(dom.contactForm, "blur", (event) => {
+    if (event.target.matches("input, select, textarea")) validateField(event.target);
+  }, true);
+
+  on(dom.contactForm, "input", (event) => {
+    if (event.target.matches("input, select, textarea") &&
+        event.target.classList.contains("invalid")) {
+      validateField(event.target);
+    }
+  });
+
+  on(dom.contactForm, "submit", (event) => {
+    event.preventDefault();
+    const fields = Array.from(dom.contactForm.elements)
+      .filter((el) => el.name && el.tagName !== "BUTTON");
+    if (!fields.every(validateField)) {
+      showToast("Revisa los campos marcados");
+      return;
+    }
+    const data = Object.fromEntries(fields.map((el) => [el.name, el.value.trim()]));
+    consultas.inc();
+    showToast("Abriendo Gmail…");
+    window.open(createGmailLink(`${data.course} — ${data.name}`), "_blank", "noopener,noreferrer");
+  });
+
+  /* =========================================================
+     CURSOS
+     ========================================================= */
+  const COURSES = [
+    { id: "frontend", title: "Desarrollo Web Frontend", tag: "TECNOLOGÍA" },
+    { id: "js",       title: "JavaScript Interactivo",   tag: "PROGRAMACIÓN" },
+    { id: "ts",       title: "TypeScript desde Cero",    tag: "DESARROLLO" }
+  ];
+
+  const renderCourses = (list) => {
+    const frag = document.createDocumentFragment();
+    list.forEach((c) => {
+      const article = document.createElement("article");
+      article.className = "course-card";
+      article.dataset.courseId = c.id;
+      article.innerHTML = `
+        <p class="course-tag">${c.tag}</p>
+        <h3>${c.title}</h3>
+        <button class="text-link gmail-link" type="button" data-course="${c.title}">
+          Consultar curso <span aria-hidden="true">↗</span>
+        </button>`;
+      frag.appendChild(article);
+    });
+    dom.courseGrid.replaceChildren(frag);
+  };
+  renderCourses(COURSES);
+
+  /* =========================================================
+     EFECTO ONDA EN "Construye tu futuro"
+     ---------------------------------------------------------
+     Partimos el texto en <span class="letter"> para animar
+     cada letra con su propio delay al hacer hover.
+     ========================================================= */
+  const splitWaveText = () => {
+    const el = document.querySelector(".wave-text");
+    if (!el) return;
+    const text = el.dataset.text || el.textContent;
+    el.textContent = "";
+    const frag = document.createDocumentFragment();
+    for (const ch of text) {
+      const span = document.createElement("span");
+      span.className = "letter";
+      span.textContent = ch === " " ? "\u00A0" : ch;
+      frag.appendChild(span);
+    }
+    el.appendChild(frag);
+  };
+  splitWaveText();
+
+  /* =========================================================
+     BOOTSTRAP
+     ========================================================= */
+  dom.year.textContent = String(new Date().getFullYear());
+  if (anim) {
+    anim.resize();
+    anim.seedParticles();
+    anim.start();
+  }
+
 })();

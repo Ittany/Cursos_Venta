@@ -3,15 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EDUCANDING | Cursos</title>
+  <meta name="description" content="EDUCANDING: cursos online con enfoque práctico.">
+  <meta name="theme-color" content="#0a0e1a">
+  <title>EDUCANDING | Cursos que impulsan tu futuro</title>
   <link rel="stylesheet" href="styles.css">
   <script src="app.js" defer></script>
 </head>
 <body>
 
-  <header class="site-header">
-    <nav class="nav container">
-      <a class="brand" href="#">EDUCANDING</a>
+  <a class="skip-link" href="#main">Saltar al contenido</a>
+
+  <header class="site-header" id="inicio">
+    <nav class="nav container" aria-label="Navegación principal">
+      <a class="brand" href="#inicio" aria-label="EDUCANDING inicio">
+        <span class="brand-mark" aria-hidden="true">E</span>
+        <span>EDUCAN<span>DING</span></span>
+      </a>
 
       <button class="nav-toggle" id="navToggle" type="button"
               aria-label="Abrir menú" aria-expanded="false" aria-controls="navMenu">
@@ -20,45 +27,142 @@
 
       <div class="nav-menu" id="navMenu">
         <a href="#cursos">Cursos</a>
+        <a href="#contacto">Contacto</a>
         <a class="gmail-link" href="#" data-course="Información general">Consultar por Gmail</a>
       </div>
     </nav>
   </header>
 
-  <main>
-    <section class="hero">
+  <main id="main">
+
+    <!-- ================= HERO ================= -->
+    <section class="hero" id="hero" aria-labelledby="heroTitle">
       <canvas id="heroCanvas" aria-hidden="true"></canvas>
+      <div class="hero-glow hero-glow-one" aria-hidden="true"></div>
+      <div class="hero-glow hero-glow-two" aria-hidden="true"></div>
 
       <div class="container hero-content">
-        <h1>Aprende hoy. <span>Construye tu futuro.</span></h1>
-        <p>Descubre cursos pensados para desarrollar habilidades digitales.</p>
+        <p class="eyebrow"><span class="pulse-dot" aria-hidden="true"></span> Formación práctica y actual</p>
 
-        <a class="btn gmail-link" href="#" data-course="Consulta de cursos">
-          Quiero información
-        </a>
+        <h1 id="heroTitle">
+          Aprende hoy.
+          <span class="wave-text" data-text="Construye tu futuro.">Construye tu futuro.</span>
+        </h1>
+
+        <p class="hero-text">
+          Cursos pensados para desarrollar habilidades digitales
+          con una experiencia clara, práctica y orientada a proyectos.
+        </p>
+
+        <div class="hero-actions">
+          <a class="btn btn-primary gmail-link" href="#" data-course="Consulta de cursos">
+            Quiero información <span aria-hidden="true">↗</span>
+          </a>
+          <button class="btn btn-ghost" id="compactToggle" type="button" aria-pressed="false">
+            Modo compacto
+          </button>
+        </div>
+
+        <ul class="trust-row" aria-label="Características">
+          <li><strong>100%</strong><span>práctico</span></li>
+          <li><strong>3</strong><span>rutas</span></li>
+          <li><strong>1</strong><span>canal directo</span></li>
+        </ul>
       </div>
     </section>
 
-    <section class="section" id="cursos">
+    <!-- ================= CURSOS ================= -->
+    <section class="section" id="cursos" aria-labelledby="cursosTitle">
       <div class="container">
-        <h2>Cursos</h2>
-        <p>Próximamente añadiremos las tarjetas de cada curso.</p>
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Explora las opciones</p>
+            <h2 id="cursosTitle">Cursos para convertir ideas en proyectos</h2>
+          </div>
+          <p>Para precios, horarios y vacantes, envía un mensaje por Gmail.</p>
+        </div>
+
+        <div class="course-grid" id="courseGrid"></div>
+      </div>
+    </section>
+
+    <!-- ================= CONTACTO ================= -->
+    <section class="section" id="contacto" aria-labelledby="contactoTitle">
+      <div class="container">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Consulta directa</p>
+            <h2 id="contactoTitle">Cuéntanos qué quieres aprender</h2>
+          </div>
+          <p>Validamos los campos antes de abrir Gmail.</p>
+        </div>
+
+        <form class="contact-form" id="contactForm" novalidate>
+          <div class="field">
+            <label for="nameInput">Nombre</label>
+            <input id="nameInput" name="name" type="text" required minlength="2"
+                   autocomplete="name" aria-describedby="nameError">
+            <small class="error" id="nameError" data-error-for="nameInput"></small>
+          </div>
+
+          <div class="field">
+            <label for="emailInput">Correo</label>
+            <input id="emailInput" name="email" type="email" required
+                   autocomplete="email" aria-describedby="emailError">
+            <small class="error" id="emailError" data-error-for="emailInput"></small>
+          </div>
+
+          <div class="field">
+            <label for="courseSelect">Curso de interés</label>
+            <select id="courseSelect" name="course" required>
+              <option value="">— Selecciona —</option>
+              <option value="Desarrollo Web Frontend">Desarrollo Web Frontend</option>
+              <option value="JavaScript Interactivo">JavaScript Interactivo</option>
+              <option value="TypeScript desde Cero">TypeScript desde Cero</option>
+            </select>
+            <small class="error" id="courseError" data-error-for="courseSelect"></small>
+          </div>
+
+          <div class="field">
+            <label for="messageInput">Mensaje</label>
+            <textarea id="messageInput" name="message" rows="4" required minlength="10"
+                      aria-describedby="messageError"></textarea>
+            <small class="error" id="messageError" data-error-for="messageInput"></small>
+          </div>
+
+          <button class="btn btn-primary" type="submit">Enviar consulta</button>
+        </form>
       </div>
     </section>
   </main>
 
-  <!-- Controles flotantes: contador + botón reinicio -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div>
+        <a class="brand" href="#inicio">
+          <span class="brand-mark" aria-hidden="true">E</span>
+          <span>EDUCAN<span>DING</span></span>
+        </a>
+        <p>Formación digital con enfoque práctico.</p>
+      </div>
+      <div class="footer-right">
+        <p>Contacto: <strong>gonzalesbrittany802@gmail.com</strong></p>
+        <p>NOVENO SEMESTRE · <span id="year"></span> · DESARROLLO DE APLICACIONES WEB</p>
+      </div>
+    </div>
+  </footer>
+
   <div class="click-counter" aria-live="polite">
-    <span>✉</span>
-    <span><strong id="clickCount">0</strong> consultas iniciadas</span>
+    <span aria-hidden="true">✉</span>
+    <span><strong id="clickCount">0</strong> consultas</span>
   </div>
 
-  <button class="reset-btn" id="resetBtn" type="button" aria-label="Reiniciar contador y fondo">
+  <button class="reset-btn" id="resetBtn" type="button" aria-label="Reiniciar burbujas">
     ↺ Reiniciar
   </button>
 
   <div class="toast" id="toast" role="status" aria-live="polite">
-    <span id="toastText">Abriendo Gmail…</span>
+    <span id="toastText">Listo</span>
   </div>
 
 </body>
