@@ -31,7 +31,16 @@
     compactToggle: $("#compactToggle"),
     courseGrid: $("#courseGrid"),
     contactForm: $("#contactForm"),
-    year: $("#year")
+    year: $("#year"),
+    diagPanel: $("#diagPanel"),
+    diagToggle: $("#diagToggle"),
+    diagFps: $("#diagFps"),
+    diagDt: $("#diagDt"),
+    diagRam: $("#diagRam"),
+    diagListeners: $("#diagListeners"),
+    diagNodes: $("#diagNodes"),
+    diagBubbles: $("#diagBubbles"),
+    diagNote: $("#diagNote")
   };
 
   /* ---------------------------------------------------------
@@ -65,16 +74,24 @@
      ========================================================= */
   const createAnimationSystem = (canvas) => {
     const ctx = canvas.getContext("2d", { alpha: true });
-    if (!ctx) return null;
+    if (!ctx) return {
+         stats: () => ({
+        fps: 0,        // se actualizará desde el panel
+        bubbles: state.bubbles.length,
+        particles: state.particles.length
+      }),}
+      ;
 
-    const state = {
+     const state = {
       width: 0, height: 0, dpr: 1,
       particles: [],
-      bubbles: [],   // ← burbujas gigantes del click
+      bubbles: [],
       lastTime: 0,
       rafId: 0,
       running: false,
       paused: false,
+      // métricas
+      fps: 0, frames: 0, fpsTimer: 0, lastDt: 0,
       internalListeners: []
     };
 
@@ -160,6 +177,14 @@
     const animate = (time) => {
       const rawDt = (time - state.lastTime) / 1000 || 0;
       const dt = Math.min(rawDt, 0.05);
+      state.lastDt = dt * 1000;
+      state.frames += 1;
+      state.fpsTimer += dt;
+      if (state.fpsTimer >= 0.5) {
+        state.fps = Math.round(state.frames / state.fpsTimer);
+        state.frames = 0;
+        state.fpsTimer = 0;
+      }
       state.lastTime = time;
 
       ctx.clearRect(0, 0, state.width, state.height);
@@ -226,16 +251,20 @@
 
     return {
       resize, seedParticles, addBubble, clearBubbles,
-      start, stop, dispose
+      start, stop, dispose,
+      stats: () => ({
+        fps: state.fps,
+        dt: state.lastDt,
+        bubbles: state.bubbles.length,
+        particles: state.particles.length
+      })
     };
   };
 
   const anim = createAnimationSystem(dom.canvas);
   if (!anim) console.error("Canvas no disponible");
 
-  /* =========================================================
-     GMAIL LINKS (delegación) — solo suma contador, NO burbujas
-     ========================================================= */
+  /* GMIL LINKS CONTADOR */
   const createGmailLink = (course) => {
     const subject = encodeURIComponent(`Consulta sobre ${course}`);
     const body = encodeURIComponent(`Hola, quisiera información sobre "${course}".`);
@@ -397,10 +426,46 @@
     el.appendChild(frag);
   };
   splitWaveText();
+  
+  /* PANEL DE DISAGNOSTICO */
+  const readMemory = () => {
+    // API no estándar, solo Chrome/Edge
+    if (performance.memory && performance.memory.usedJSHeapSize) {
+      const mb = performance.memory.usedJSHeapSize / 1048576;
+      return `${mb.toFixed(1)} MB`;
+    }
+    return "N/D";
+  };
 
-  /* =========================================================
-     BOOTSTRAP
-     ========================================================= */
+  // Detecta si hay soporte y avisa
+  if (!performance.memory) {
+    dom.diagNote.textContent = "RAM no expuesta por este navegador (usa Chrome/Edge).";
+  } else {
+    dom.diagNote.textContent = "RAM vía performance.memory (solo Chrome/Edge).";
+  }
+
+  const updateDiag = () => {
+    if (!anim) return;
+    const s = anim.stats();
+    dom.diagFps.textContent = s.fps || "--";
+    dom.diagDt.textContent = `${(s.dt || 0).toFixed(1)} ms`;
+    dom.diagRam.textContent = readMemory();
+    dom.diagListeners.textContent = listenerRegistry.length;
+    dom.diagNodes.textContent = document.getElementsByTagName("*").length;
+    dom.diagBubbles.textContent = s.bubbles || 0;
+  };
+
+  // Muestreo cada 500 ms (NO se usa para animar, solo para medir)
+  window.setInterval(updateDiag, 500);
+  updateDiag();
+
+  // Minimizar / expandir el panel
+  on(dom.diagToggle, "click", () => {
+    const minimized = dom.diagPanel.classList.toggle("minimized");
+    dom.diagToggle.textContent = minimized ? "+" : "−";
+  });
+
+  /*BOOTSTRAP */
   dom.year.textContent = String(new Date().getFullYear());
   if (anim) {
     anim.resize();

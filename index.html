@@ -134,6 +134,25 @@
         </form>
       </div>
     </section>
+
+      <!-- PANEL DE DIAGNÓSTICO  -->
+    <aside class="diag-panel" id="diagPanel" aria-label="Panel de diagnóstico">
+        <header class="diag-head">
+        <span class="diag-dot" aria-hidden="true"></span>
+        <strong>Diagnóstico</strong>
+        <button class="diag-toggle" id="diagToggle" type="button" aria-label="Minimizar panel">−</button>
+        </header>
+        <ul class="diag-list">
+        <li><span>FPS</span><strong id="diagFps">--</strong></li>
+        <li><span>Frame time</span><strong id="diagDt">-- ms</strong></li>
+        <li><span>RAM (JS heap)</span><strong id="diagRam">N/D</strong></li>
+        <li><span>Listeners</span><strong id="diagListeners">0</strong></li>
+        <li><span>Nodos DOM</span><strong id="diagNodes">0</strong></li>
+        <li><span>Burbujas</span><strong id="diagBubbles">0</strong></li>
+        </ul>
+        <p class="diag-note" id="diagNote">RAM solo visible en Chrome/Edge.</p>
+    </aside>
+
   </main>
 
   <footer class="footer">
